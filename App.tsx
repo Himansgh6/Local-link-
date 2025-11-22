@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, LogOut } from 'lucide-react';
-import { UserRole, Product, CartItem, Order, User, Store, Message } from './types';
+import { UserRole, Product, CartItem, Order, User, Store, Message, Review } from './types';
 import { MOCK_PRODUCTS, MOCK_STORES } from './constants';
 import { MerchantView } from './components/MerchantView';
 import { ShopperView } from './components/ShopperView';
@@ -10,6 +10,28 @@ const App: React.FC = () => {
   // User State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
+  // Theme State
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('locallink_theme');
+      return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('locallink_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('locallink_theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
   // Initialize users from localStorage or defaults
   const [users, setUsers] = useState<Array<User & { password: string }>>(() => {
     try {
@@ -66,6 +88,13 @@ const App: React.FC = () => {
     } catch (e) { return []; }
   });
 
+  const [reviews, setReviews] = useState<Review[]>(() => {
+    try {
+      const saved = localStorage.getItem('locallink_reviews');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+
   // Save data to local storage whenever it changes
   useEffect(() => localStorage.setItem('locallink_users', JSON.stringify(users)), [users]);
   useEffect(() => localStorage.setItem('locallink_products', JSON.stringify(products)), [products]);
@@ -73,6 +102,7 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem('locallink_orders', JSON.stringify(orders)), [orders]);
   useEffect(() => localStorage.setItem('locallink_messages', JSON.stringify(messages)), [messages]);
   useEffect(() => localStorage.setItem('locallink_cart', JSON.stringify(cart)), [cart]);
+  useEffect(() => localStorage.setItem('locallink_reviews', JSON.stringify(reviews)), [reviews]);
 
   const handleLogin = (email: string, pass: string) => {
     setAuthLoading(true);
@@ -220,6 +250,10 @@ const App: React.FC = () => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
   };
 
+  const handleAddReview = (review: Review) => {
+    setReviews(prev => [review, ...prev]);
+  };
+
   // Render Auth View if not logged in
   if (!currentUser) {
     return (
@@ -234,12 +268,12 @@ const App: React.FC = () => {
   }
 
   return (
-    <div>
+    <div className="transition-colors duration-200">
       {/* Logout Button (Desktop) */}
       <div className="fixed bottom-4 left-4 z-50 hidden md:block">
         <button 
           onClick={handleLogout}
-          className="bg-gray-800 text-white px-4 py-2 rounded-full text-xs font-medium shadow-lg hover:bg-gray-700 transition-all flex items-center gap-2 opacity-50 hover:opacity-100"
+          className="bg-slate-800 dark:bg-slate-700 text-white px-4 py-2 rounded-full text-xs font-medium shadow-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-all flex items-center gap-2 opacity-50 hover:opacity-100"
         >
           <LogOut size={14} />
           Log Out ({currentUser.name})
@@ -259,6 +293,8 @@ const App: React.FC = () => {
           messages={messages}
           onSendMessage={handleSendMessage}
           onLogout={handleLogout}
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
         />
       ) : (
         <ShopperView 
@@ -275,28 +311,32 @@ const App: React.FC = () => {
           messages={messages}
           onSendMessage={handleSendMessage}
           onLogout={handleLogout}
+          isDarkMode={isDarkMode}
+          toggleTheme={toggleTheme}
+          reviews={reviews}
+          onAddReview={handleAddReview}
         />
       )}
       
       {/* Global Order Status Notification for Shopper */}
       {currentUser.role === UserRole.SHOPPER && orders.filter(o => o.customerName === currentUser.name).length > 0 && (
-        <div className="fixed bottom-20 md:bottom-4 right-4 z-40 w-80 bg-white rounded-lg shadow-xl border border-gray-200 p-4 hidden md:block">
+        <div className="fixed bottom-20 md:bottom-4 right-4 z-40 w-80 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 p-4 hidden md:block">
           <div className="flex items-center gap-3 mb-2">
-            <Truck className="text-indigo-600" size={20} />
-            <h4 className="font-bold text-sm">Latest Order Status</h4>
+            <Truck className="text-indigo-600 dark:text-indigo-400" size={20} />
+            <h4 className="font-bold text-sm text-slate-900 dark:text-white">Latest Order Status</h4>
           </div>
           {(() => {
             // Get most recent order for this user
             const latestOrder = orders.filter(o => o.customerName === currentUser.name)[0];
             return (
               <>
-                <div className="text-sm text-gray-600">
-                  Order #{latestOrder.id.slice(0,6)} is <span className={`font-bold ${latestOrder.status === 'cancelled' ? 'text-red-600' : 'text-indigo-600'}`}>{latestOrder.status.toUpperCase()}</span>
+                <div className="text-sm text-slate-600 dark:text-slate-300">
+                  Order #{latestOrder.id.slice(0,6)} is <span className={`font-bold ${latestOrder.status === 'cancelled' ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-600 dark:text-indigo-400'}`}>{latestOrder.status.toUpperCase()}</span>
                 </div>
                 {latestOrder.status !== 'cancelled' && (
-                  <div className="w-full bg-gray-100 h-1.5 mt-3 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-100 dark:bg-slate-700 h-1.5 mt-3 rounded-full overflow-hidden">
                     <div 
-                      className="bg-indigo-600 h-full transition-all duration-500" 
+                      className="bg-indigo-600 dark:bg-indigo-500 h-full transition-all duration-500" 
                       style={{ 
                         width: latestOrder.status === 'pending' ? '25%' : 
                               latestOrder.status === 'preparing' ? '50%' : 

@@ -19,11 +19,11 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = "inline-flex items-center justify-center rounded-xl font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95";
   
   const variants = {
-    primary: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 focus:ring-emerald-500",
-    secondary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 focus:ring-indigo-500",
-    outline: "border-2 border-gray-200 bg-white text-gray-700 hover:border-emerald-500 hover:text-emerald-600 focus:ring-emerald-500",
-    danger: "bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-200 focus:ring-rose-500",
-    ghost: "bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+    primary: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-200 dark:shadow-emerald-900/30 focus:ring-emerald-500",
+    secondary: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 focus:ring-indigo-500",
+    outline: "border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-200 hover:border-emerald-500 dark:hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 focus:ring-emerald-500",
+    danger: "bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-200 dark:shadow-rose-900/30 focus:ring-rose-500",
+    ghost: "bg-transparent text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white",
   };
 
   const sizes = {

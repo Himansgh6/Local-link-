@@ -55,6 +55,16 @@ export interface Order {
   paymentMethod: string;
 }
 
+export interface Review {
+  id: string;
+  storeId: string;
+  userId: string;
+  userName: string;
+  rating: number; // 1-5
+  comment: string;
+  timestamp: number;
+}
+
 export interface AIResponse {
   text: string;
   items?: string[]; // For recommendations
