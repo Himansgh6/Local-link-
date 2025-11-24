@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ShoppingCart, MapPin, Sparkles, X, Plus, Store, ChevronLeft, ChevronDown, Phone, Home, Facebook, Twitter, Instagram, Linkedin, Package, Clock, AlertCircle, User, Save, MessageCircle, Send, Bell, CreditCard, Wallet, Banknote, Sun, Moon, Star } from 'lucide-react';
+import { Search, ShoppingCart, MapPin, Sparkles, X, Plus, Store, ChevronLeft, ChevronDown, Phone, Home, Facebook, Twitter, Instagram, Linkedin, Package, Clock, AlertCircle, User, Save, MessageCircle, Send, Bell, CreditCard, Wallet, Banknote, Sun, Moon, Star, ExternalLink } from 'lucide-react';
 import { Product, CartItem, StoreType, Order, User as UserType, Store as StoreModel, Message, Review } from '../types';
 import { STORE_TYPES, STORE_CATEGORIES, STORE_IMAGES } from '../constants';
 import { Button } from './Button';
@@ -169,6 +169,13 @@ export const ShopperView: React.FC<ShopperViewProps> = ({
     
     const isHighlighted = highlightedProductIds.length === 0 || highlightedProductIds.includes(p.id);
 
+    // Location filtering
+    const storeForProduct = stores.find(s => s.id === p.storeId);
+    const matchesLocation = location === 'Current Location' || 
+                            (storeForProduct && storeForProduct.address.toLowerCase().includes(location.toLowerCase()));
+
+    if (!matchesLocation) return false; // Early exit if not matching location
+
     if (highlightedProductIds.length > 0) return isHighlighted && matchesSearch;
 
     // Store ID Filter (takes precedence over store type if selected)
@@ -295,6 +302,9 @@ export const ShopperView: React.FC<ShopperViewProps> = ({
   const currentStore = selectedStoreId ? stores.find(s => s.id === selectedStoreId) : null;
   const currentStoreReviews = getCurrentStoreReviews();
   const currentStoreAvgRating = selectedStoreId ? getAverageRating(selectedStoreId) : 0;
+  
+  // When a store is selected, we want a special layout
+  const isStoreView = !!(selectedStoreId && currentStore);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col pb-16 md:pb-0 transition-colors duration-200">
@@ -423,348 +433,507 @@ export const ShopperView: React.FC<ShopperViewProps> = ({
         </div>
       </div>
 
-      {/* Hero Section with AI Search */}
-      <div className="relative bg-emerald-900 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1573855619003-97b4799dcd8b?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-20"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/50 to-emerald-900"></div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 tracking-tight">
-            Your local market, <br/><span className="text-emerald-300">reimagined.</span>
-          </h1>
-          <p className="text-emerald-100 mb-10 text-lg max-w-2xl mx-auto">
-            Shop from neighborhood stores with the help of AI. Fresh groceries, essentials, and more delivered in minutes.
-          </p>
-
-          <form onSubmit={handleAiSearch} className="relative max-w-2xl mx-auto group">
-            <div className="relative transform transition-all duration-300 group-hover:-translate-y-1">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
-              <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex items-center p-2">
-                <div className="pl-4 text-emerald-500">
-                  <Sparkles className="w-6 h-6" />
-                </div>
-                <input 
-                  type="text" 
-                  value={aiQuery}
-                  onChange={e => setAiQuery(e.target.value)}
-                  placeholder="Describe what you need (e.g. 'ingredients for italian dinner')"
-                  className="w-full pl-4 pr-4 py-3 text-lg text-black dark:text-white placeholder-slate-400 outline-none bg-transparent"
-                />
-                {highlightedProductIds.length > 0 && (
-                  <button 
-                    type="button"
-                    onClick={clearAiSearch}
-                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                )}
-                <button 
-                  type="submit"
-                  disabled={aiLoading}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-md disabled:opacity-70 disabled:cursor-wait min-w-[100px]"
-                >
-                  {aiLoading ? 'Thinking...' : 'Ask AI'}
-                </button>
-              </div>
-            </div>
-          </form>
+      {/* Hero Section - Only show when NOT in single store view */}
+      {!isStoreView && (
+        <div className="relative bg-emerald-900 overflow-hidden">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1573855619003-97b4799dcd8b?auto=format&fit=crop&w=1200&q=80')] bg-cover bg-center opacity-20"></div>
+          <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/50 to-emerald-900"></div>
           
-          {highlightedProductIds.length > 0 && (
-             <div className="mt-6 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-emerald-100 border border-white/20">
-               <Sparkles className="w-4 h-4 text-emerald-300" />
-               <span>Found {highlightedProductIds.length} recommendations for you</span>
-             </div>
-          )}
+          <div className="relative max-w-7xl mx-auto px-4 py-16 sm:px-6 lg:px-8 text-center">
+            <h1 className="text-4xl sm:text-5xl font-bold text-white mb-6 tracking-tight">
+              Your local market, <br/><span className="text-emerald-300">reimagined.</span>
+            </h1>
+            <p className="text-emerald-100 mb-10 text-lg max-w-2xl mx-auto">
+              Shop from neighborhood stores with the help of AI. Fresh groceries, essentials, and more delivered in minutes.
+            </p>
+
+            <form onSubmit={handleAiSearch} className="relative max-w-2xl mx-auto group">
+              <div className="relative transform transition-all duration-300 group-hover:-translate-y-1">
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-2xl blur opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex items-center p-2">
+                  <div className="pl-4 text-emerald-500">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <input 
+                    type="text" 
+                    value={aiQuery}
+                    onChange={e => setAiQuery(e.target.value)}
+                    placeholder="Describe what you need (e.g. 'ingredients for italian dinner')"
+                    className="w-full pl-4 pr-4 py-3 text-lg text-black dark:text-white placeholder-slate-400 outline-none bg-transparent"
+                  />
+                  {highlightedProductIds.length > 0 && (
+                    <button 
+                      type="button"
+                      onClick={clearAiSearch}
+                      className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  )}
+                  <button 
+                    type="submit"
+                    disabled={aiLoading}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-xl font-semibold transition-colors shadow-md disabled:opacity-70 disabled:cursor-wait min-w-[100px]"
+                  >
+                    {aiLoading ? 'Thinking...' : 'Ask AI'}
+                  </button>
+                </div>
+              </div>
+            </form>
+            
+            {highlightedProductIds.length > 0 && (
+              <div className="mt-6 inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full text-emerald-100 border border-white/20">
+                <Sparkles className="w-4 h-4 text-emerald-300" />
+                <span>Found {highlightedProductIds.length} recommendations for you</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
-      <div className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 w-full">
+      <div className={`flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full ${!isStoreView ? '-mt-8' : 'pt-8'}`}>
         
-        {/* Filters Container */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 mb-10">
-          
-          {/* Standard Search - Only show if AI inactive */}
-          {highlightedProductIds.length === 0 && (
-             <div className="relative mb-8">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-                <input 
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Or search specifically..."
-                  className="w-full pl-12 pr-10 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-black dark:text-white"
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    <X size={18} />
-                  </button>
-                )}
-             </div>
-          )}
-
-          {/* Neighborhood Stores List */}
-          {!searchQuery && highlightedProductIds.length === 0 && stores.length > 0 && (
-            <div className="mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg">Visit Neighborhood Stores</h3>
-                  {selectedStoreId && (
+        {/* If Store View is Active, Show Store Profile Header */}
+        {isStoreView && currentStore ? (
+           <div className="mb-10">
+              {/* Hero Banner */}
+              <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden shadow-xl mb-8 group">
+                 <img 
+                    src={STORE_IMAGES[currentStore.type] || STORE_IMAGES['All']} 
+                    alt={currentStore.name} 
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000"
+                 />
+                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                 <div className="absolute top-4 left-4">
                      <button 
                        onClick={() => handleStoreSelect('All')}
-                       className="text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 flex items-center"
+                       className="bg-white/20 backdrop-blur-md hover:bg-white/30 text-white p-2 rounded-full transition-colors flex items-center gap-2 pr-4"
                      >
-                       View All Products <ChevronLeft className="w-4 h-4 rotate-180" />
+                       <ChevronLeft size={20} /> <span className="text-sm font-medium">Back to Market</span>
                      </button>
-                  )}
-                </div>
-                <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                   {stores.map(store => (
-                      <button
-                        key={store.id}
-                        onClick={() => handleSpecificStoreSelect(store.id)}
-                        className={`flex flex-col items-start min-w-[200px] p-4 rounded-xl transition-all border ${
-                          selectedStoreId === store.id 
-                          ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500 border-emerald-500' 
-                          : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border-slate-200 dark:border-slate-700'
-                        }`}
-                      >
-                         <div className="flex items-center gap-3 mb-3">
-                            <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm ${
-                                store.type === 'Kirana' ? 'bg-emerald-500' : 
-                                store.type === 'Medical' ? 'bg-rose-500' : 
-                                store.type === 'Electronics' ? 'bg-blue-500' : 'bg-amber-500'
-                            }`}>
-                              {store.name.charAt(0)}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-slate-900 dark:text-white text-sm line-clamp-1 text-left">{store.name}</h4>
-                              <span className="text-xs text-slate-500 dark:text-slate-400">{store.type}</span>
-                            </div>
-                         </div>
-                         <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
-                            <MapPin size={12} />
-                            <span className="truncate max-w-[150px]">{store.address}</span>
-                         </div>
-                      </button>
-                   ))}
-                </div>
-            </div>
-          )}
-
-          {/* Store Types - Horizontal Scroll */}
-          {!searchQuery && highlightedProductIds.length === 0 && !selectedStoreId && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg">Shop by Category</h3>
-                {selectedStoreType !== 'All' && (
-                  <button 
-                    onClick={() => handleStoreSelect('All')}
-                    className="text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 flex items-center"
-                  >
-                    View all <ChevronLeft className="w-4 h-4 rotate-180" />
-                  </button>
-                )}
+                 </div>
+                 
+                 <div className="absolute bottom-0 left-0 right-0 p-8 md:p-10 text-white flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                           <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border border-white/30 backdrop-blur-md
+                              ${currentStore.type === 'Kirana' ? 'bg-emerald-500/80' : 
+                                currentStore.type === 'Medical' ? 'bg-rose-500/80' : 
+                                currentStore.type === 'Electronics' ? 'bg-blue-500/80' : 'bg-amber-500/80'}`}>
+                              {currentStore.type}
+                           </span>
+                           <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wide border border-white/30">
+                              Open Now
+                           </span>
+                        </div>
+                        <h1 className="text-4xl md:text-5xl font-bold mb-2 shadow-sm">{currentStore.name}</h1>
+                        <p className="flex items-center gap-2 text-white/90 text-lg">
+                           <MapPin size={18} /> {currentStore.address}
+                        </p>
+                    </div>
+                    
+                    <div className="flex gap-3">
+                        <Button 
+                           variant="secondary" 
+                           onClick={() => openChatWithStore(currentStore.id)} 
+                           className="bg-white text-indigo-900 hover:bg-indigo-50 border-0 shadow-lg"
+                           icon={<MessageCircle size={18} />}
+                        >
+                           Chat with Owner
+                        </Button>
+                        <Button 
+                           variant="outline" 
+                           onClick={() => setIsReviewModalOpen(true)}
+                           className="bg-white/10 text-white border-white/30 hover:bg-white/20 hover:border-white/50 backdrop-blur-md"
+                        >
+                           Reviews ({currentStoreReviews.length})
+                        </Button>
+                    </div>
+                 </div>
               </div>
               
-              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                <button
-                  onClick={() => handleStoreSelect('All')}
-                  className={`flex flex-col items-center min-w-[100px] p-3 rounded-xl transition-all ${selectedStoreType === 'All' ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500' : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-100 dark:border-slate-700'}`}
-                >
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${selectedStoreType === 'All' ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
-                    <Store size={20} />
-                  </div>
-                  <span className={`text-sm font-semibold ${selectedStoreType === 'All' ? 'text-emerald-900 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>All</span>
-                </button>
+              {/* Sidebar Layout for Store Details + Product Grid */}
+              <div className="flex flex-col lg:flex-row gap-8">
+                 {/* Left Sidebar - Store Info */}
+                 <div className="w-full lg:w-1/4 space-y-6">
+                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm sticky top-24">
+                        <h3 className="font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                           <Store size={18} className="text-indigo-600 dark:text-indigo-400" /> Store Details
+                        </h3>
+                        
+                        <div className="space-y-4">
+                           <div>
+                              <p className="text-xs text-slate-400 uppercase font-bold mb-1">Rating</p>
+                              <div className="flex items-center gap-2">
+                                 <span className="text-2xl font-bold text-slate-900 dark:text-white">{currentStoreAvgRating.toFixed(1)}</span>
+                                 <div className="flex flex-col">
+                                    {renderStars(currentStoreAvgRating)}
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">{currentStoreReviews.length} reviews</span>
+                                 </div>
+                              </div>
+                           </div>
+                           
+                           <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
+                           
+                           <div>
+                              <p className="text-xs text-slate-400 uppercase font-bold mb-1">Contact</p>
+                              {currentStore.phoneNumber ? (
+                                 <p className="flex items-center gap-2 text-slate-700 dark:text-slate-300 font-medium">
+                                    <Phone size={16} className="text-emerald-500" /> {currentStore.phoneNumber}
+                                 </p>
+                              ) : (
+                                 <p className="text-sm text-slate-500 italic">No phone number available</p>
+                              )}
+                           </div>
 
-                {STORE_TYPES.map(type => (
-                  <button
-                    key={type}
-                    onClick={() => handleStoreSelect(type)}
-                    className={`flex flex-col items-center min-w-[100px] p-3 rounded-xl transition-all ${selectedStoreType === type ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500' : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-100 dark:border-slate-700'}`}
-                  >
-                    <div className="w-12 h-12 rounded-full overflow-hidden mb-3 relative bg-slate-100 dark:bg-slate-700">
-                      <img 
-                        src={STORE_IMAGES[type]} 
-                        alt={type} 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                           e.currentTarget.onerror = null;
-                           e.currentTarget.src = `https://ui-avatars.com/api/?name=${type}&background=random&color=fff&size=128`;
-                        }}
-                      />
+                           <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
+
+                           <div>
+                              <p className="text-xs text-slate-400 uppercase font-bold mb-2">Categories</p>
+                              <div className="flex flex-wrap gap-2">
+                                 {STORE_CATEGORIES[currentStore.type]?.map(cat => (
+                                    <button
+                                       key={cat}
+                                       onClick={() => setSelectedCategory(selectedCategory === cat ? 'All' : cat)}
+                                       className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+                                          selectedCategory === cat 
+                                          ? 'bg-slate-800 text-white border-slate-800' 
+                                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-100 dark:border-slate-700 hover:border-slate-300'
+                                       }`}
+                                    >
+                                       {cat}
+                                    </button>
+                                 ))}
+                              </div>
+                           </div>
+                        </div>
                     </div>
-                    <span className={`text-sm font-semibold ${selectedStoreType === type ? 'text-emerald-900 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>{type}</span>
-                  </button>
-                ))}
-              </div>
+                 </div>
 
-              {/* Sub Categories (Only visible when store selected) */}
-              {selectedStoreType !== 'All' && (
-                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex flex-wrap gap-2">
-                    <button 
-                      onClick={() => setSelectedCategory('All')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === 'All' ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
-                    >
-                      All Items
-                    </button>
-                    {STORE_CATEGORIES[selectedStoreType].map(cat => (
+                 {/* Right Side - Product Grid */}
+                 <div className="w-full lg:w-3/4">
+                    <div className="flex justify-between items-center mb-6">
+                       <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                          {selectedCategory === 'All' ? 'All Products' : `${selectedCategory}`}
+                       </h2>
+                       <div className="relative w-64">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                          <input 
+                             type="text"
+                             value={searchQuery}
+                             onChange={(e) => setSearchQuery(e.target.value)}
+                             placeholder="Search in store..."
+                             className="w-full pl-9 pr-4 py-2 text-sm rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                          />
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                       {filteredProducts.map(product => (
+                          <div key={product.id} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
+                             <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                <img 
+                                   src={product.imageUrl} 
+                                   alt={product.name} 
+                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                />
+                                <div className="absolute top-3 left-3">
+                                   <span className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-800 dark:text-slate-200 text-xs px-2.5 py-1 rounded-md font-bold shadow-sm border border-slate-100 dark:border-slate-700">
+                                      {product.category}
+                                   </span>
+                                </div>
+                                <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                                   <button 
+                                      onClick={() => onAddToCart(product)}
+                                      className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-3 rounded-full shadow-lg hover:bg-emerald-500 hover:text-white active:scale-95 transition-colors"
+                                   >
+                                      <Plus size={20} />
+                                   </button>
+                                </div>
+                             </div>
+                             <div className="p-4 flex flex-col flex-1">
+                                <div className="flex justify-between items-start mb-2">
+                                   <h3 className="font-bold text-slate-900 dark:text-white text-base leading-tight">{product.name}</h3>
+                                   <span className="font-bold text-slate-900 dark:text-white">₹{product.price.toFixed(2)}</span>
+                                </div>
+                                <p className="text-slate-500 dark:text-slate-400 text-sm mb-3 line-clamp-2 flex-1">{product.description}</p>
+                                <div className="pt-3 border-t border-slate-50 dark:border-slate-800 mt-auto flex items-center justify-between">
+                                   <span className={`text-xs font-medium ${product.stock > 10 ? 'text-emerald-600' : 'text-orange-500'}`}>
+                                      {product.stock} in stock
+                                   </span>
+                                   <button 
+                                      onClick={() => onAddToCart(product)}
+                                      className="text-indigo-600 dark:text-indigo-400 text-sm font-medium hover:underline lg:hidden"
+                                   >
+                                      Add to Cart
+                                   </button>
+                                </div>
+                             </div>
+                          </div>
+                       ))}
+                    </div>
+                    {filteredProducts.length === 0 && (
+                       <div className="text-center py-20 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 border-dashed">
+                          <p className="text-slate-500 dark:text-slate-400">No products found in this category.</p>
+                       </div>
+                    )}
+                 </div>
+              </div>
+           </div>
+        ) : (
+           /* Standard Market View (Filters + Lists) */
+           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-100 dark:border-slate-800 p-6 mb-10">
+              {/* Standard Search - Only show if AI inactive */}
+              {highlightedProductIds.length === 0 && (
+                 <div className="relative mb-8">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                    <input 
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Or search specifically..."
+                      className="w-full pl-12 pr-10 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all text-black dark:text-white"
+                    />
+                    {searchQuery && (
                       <button 
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === cat ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                       >
-                        {cat}
+                        <X size={18} />
+                      </button>
+                    )}
+                 </div>
+              )}
+
+              {/* Neighborhood Stores List */}
+              {!searchQuery && highlightedProductIds.length === 0 && stores.length > 0 && (
+                <div className="mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg">Visit Neighborhood Stores</h3>
+                      {selectedStoreId && (
+                         <button 
+                           onClick={() => handleStoreSelect('All')}
+                           className="text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 flex items-center"
+                         >
+                           View All Products <ChevronLeft className="w-4 h-4 rotate-180" />
+                         </button>
+                      )}
+                    </div>
+                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                       {stores.map(store => (
+                          <button
+                            key={store.id}
+                            onClick={() => handleSpecificStoreSelect(store.id)}
+                            className={`flex flex-col items-start min-w-[200px] p-4 rounded-xl transition-all border ${
+                              selectedStoreId === store.id 
+                              ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500 border-emerald-500' 
+                              : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border-slate-200 dark:border-slate-700'
+                            }`}
+                          >
+                             <div className="flex items-center gap-3 mb-3">
+                                <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-bold shadow-sm ${
+                                    store.type === 'Kirana' ? 'bg-emerald-500' : 
+                                    store.type === 'Medical' ? 'bg-rose-500' : 
+                                    store.type === 'Electronics' ? 'bg-blue-500' : 'bg-amber-500'
+                                }`}>
+                                  {store.name.charAt(0)}
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-slate-900 dark:text-white text-sm line-clamp-1 text-left">{store.name}</h4>
+                                  <span className="text-xs text-slate-500 dark:text-slate-400">{store.type}</span>
+                                </div>
+                             </div>
+                             <div className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                <MapPin size={12} />
+                                <span className="truncate max-w-[150px]">{store.address}</span>
+                             </div>
+                          </button>
+                       ))}
+                    </div>
+                </div>
+              )}
+
+              {/* Store Types - Horizontal Scroll */}
+              {!searchQuery && highlightedProductIds.length === 0 && !selectedStoreId && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-slate-800 dark:text-slate-200 text-lg">Shop by Category</h3>
+                    {selectedStoreType !== 'All' && (
+                      <button 
+                        onClick={() => handleStoreSelect('All')}
+                        className="text-sm text-emerald-600 dark:text-emerald-400 font-medium hover:text-emerald-700 flex items-center"
+                      >
+                        View all <ChevronLeft className="w-4 h-4 rotate-180" />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                    <button
+                      onClick={() => handleStoreSelect('All')}
+                      className={`flex flex-col items-center min-w-[100px] p-3 rounded-xl transition-all ${selectedStoreType === 'All' ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500' : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-100 dark:border-slate-700'}`}
+                    >
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${selectedStoreType === 'All' ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>
+                        <Store size={20} />
+                      </div>
+                      <span className={`text-sm font-semibold ${selectedStoreType === 'All' ? 'text-emerald-900 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>All</span>
+                    </button>
+
+                    {STORE_TYPES.map(type => (
+                      <button
+                        key={type}
+                        onClick={() => handleStoreSelect(type)}
+                        className={`flex flex-col items-center min-w-[100px] p-3 rounded-xl transition-all ${selectedStoreType === type ? 'bg-emerald-50 dark:bg-emerald-900/20 ring-2 ring-emerald-500' : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-100 dark:border-slate-700'}`}
+                      >
+                        <div className="w-12 h-12 rounded-full overflow-hidden mb-3 relative bg-slate-100 dark:bg-slate-700">
+                          <img 
+                            src={STORE_IMAGES[type]} 
+                            alt={type} 
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                               e.currentTarget.onerror = null;
+                               e.currentTarget.src = `https://ui-avatars.com/api/?name=${type}&background=random&color=fff&size=128`;
+                            }}
+                          />
+                        </div>
+                        <span className={`text-sm font-semibold ${selectedStoreType === type ? 'text-emerald-900 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400'}`}>{type}</span>
                       </button>
                     ))}
                   </div>
+
+                  {/* Sub Categories (Only visible when store selected) */}
+                  {selectedStoreType !== 'All' && (
+                    <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                      <div className="flex flex-wrap gap-2">
+                        <button 
+                          onClick={() => setSelectedCategory('All')}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === 'All' ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                        >
+                          All Items
+                        </button>
+                        {STORE_CATEGORIES[selectedStoreType].map(cat => (
+                          <button 
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedCategory === cat ? 'bg-slate-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
-        </div>
-
-        {/* Specific Store Profile Header with Reviews */}
-        {selectedStoreId && currentStore && (
-          <div className="mb-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 p-6 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-start gap-4">
-                <div className={`h-16 w-16 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-sm ${
-                  currentStore.type === 'Kirana' ? 'bg-emerald-500' : 
-                  currentStore.type === 'Medical' ? 'bg-rose-500' : 
-                  currentStore.type === 'Electronics' ? 'bg-blue-500' : 'bg-amber-500'
-                }`}>
-                  {currentStore.name.charAt(0)}
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{currentStore.name}</h1>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    <span className="flex items-center gap-1"><MapPin size={14} /> {currentStore.address}</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span>{currentStore.type} Store</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    {renderStars(currentStoreAvgRating)}
-                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{currentStoreAvgRating.toFixed(1)}</span>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">({currentStoreReviews.length} reviews)</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                 <Button variant="outline" onClick={() => setIsReviewModalOpen(true)}>See Reviews</Button>
-                 <Button onClick={() => openChatWithStore(currentStore.id)} icon={<MessageCircle size={18} />}>Chat</Button>
-              </div>
-            </div>
-          </div>
+           </div>
         )}
 
-        {/* Product Grid */}
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {searchQuery ? `Results for "${searchQuery}"` : 
-             highlightedProductIds.length > 0 ? 'Recommended for you' : 
-             selectedStoreId ? 'Store Products' :
-             selectedStoreType === 'All' ? `Popular in ${location}` : `${selectedStoreType} in ${location}`}
-          </h2>
-          <span className="text-sm text-slate-500 dark:text-slate-400">{filteredProducts.length} items</span>
-        </div>
+        {/* Default Product Grid (Only show if NOT in specific store view) */}
+        {!isStoreView && (
+           <>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {searchQuery ? `Results for "${searchQuery}"` : 
+                   highlightedProductIds.length > 0 ? 'Recommended for you' : 
+                   selectedStoreType === 'All' ? `Popular in ${location}` : `${selectedStoreType} in ${location}`}
+                </h2>
+                <span className="text-sm text-slate-500 dark:text-slate-400">{filteredProducts.length} items</span>
+              </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {filteredProducts.map(product => (
-            <div key={product.id} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
-              <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-slate-800">
-                <img 
-                  src={product.imageUrl} 
-                  alt={product.name} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=random&color=fff&size=256`;
-                  }}
-                />
-                
-                <div className="absolute top-3 left-3">
-                  <span className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-800 dark:text-slate-200 text-xs px-2.5 py-1 rounded-md font-bold shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-1">
-                    {product.storeType}
-                  </span>
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {filteredProducts.map(product => (
+                  <div key={product.id} className="group bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 overflow-hidden flex flex-col">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <img 
+                        src={product.imageUrl} 
+                        alt={product.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=random&color=fff&size=256`;
+                        }}
+                      />
+                      
+                      <div className="absolute top-3 left-3">
+                        <span className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm text-slate-800 dark:text-slate-200 text-xs px-2.5 py-1 rounded-md font-bold shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-1">
+                          {product.storeType}
+                        </span>
+                      </div>
 
-                {/* Quick Add Button overlay on desktop */}
-                <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-                  <button 
-                    onClick={() => openChatWithStore(product.storeId)}
-                    className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 p-3 rounded-full shadow-lg hover:bg-indigo-500 hover:text-white active:scale-95 transition-colors"
-                    title="Chat with Seller"
-                  >
-                    <MessageCircle size={20} />
-                  </button>
-                  <button 
-                    onClick={() => onAddToCart(product)}
-                    className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-3 rounded-full shadow-lg hover:bg-emerald-500 hover:text-white active:scale-95 transition-colors"
-                    title="Add to Cart"
-                  >
-                    <Plus size={20} />
-                  </button>
-                </div>
+                      {/* Quick Add Button overlay on desktop */}
+                      <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0 transition-all duration-300">
+                        <button 
+                          onClick={() => openChatWithStore(product.storeId)}
+                          className="bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 p-3 rounded-full shadow-lg hover:bg-indigo-500 hover:text-white active:scale-95 transition-colors"
+                          title="Chat with Seller"
+                        >
+                          <MessageCircle size={20} />
+                        </button>
+                        <button 
+                          onClick={() => onAddToCart(product)}
+                          className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white p-3 rounded-full shadow-lg hover:bg-emerald-500 hover:text-white active:scale-95 transition-colors"
+                          title="Add to Cart"
+                        >
+                          <Plus size={20} />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <h3 className="font-bold text-slate-900 dark:text-white text-lg leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{product.name}</h3>
+                          <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-1">
+                              <Store size={12} /> {product.storeName || 'Local Store'} • {product.distance || 'Nearby'}
+                          </p>
+                        </div>
+                        <span className="font-bold text-slate-900 dark:text-white">₹{product.price.toFixed(2)}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 mb-3">
+                         <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs rounded font-medium">{product.category}</span>
+                         {product.stock < 10 && (
+                           <span className="text-xs text-orange-500 font-medium">Only {product.stock} left</span>
+                         )}
+                      </div>
+
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mb-4 line-clamp-2 flex-1">{product.description}</p>
+                      
+                      <div className="flex items-center gap-2 pt-4 border-t border-slate-50 dark:border-slate-800 mt-auto lg:hidden">
+                        <button 
+                          onClick={() => openChatWithStore(product.storeId)}
+                          className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex justify-center items-center gap-1"
+                        >
+                          <MessageCircle size={16} /> Chat
+                        </button>
+                        <button 
+                          onClick={() => onAddToCart(product)}
+                          className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        >
+                          Add to Cart
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
               
-              <div className="p-5 flex flex-col flex-1">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-lg leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{product.name}</h3>
-                    <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-1">
-                        <Store size={12} /> {product.storeName || 'Local Store'} • {product.distance || 'Nearby'}
-                    </p>
-                  </div>
-                  <span className="font-bold text-slate-900 dark:text-white">₹{product.price.toFixed(2)}</span>
-                </div>
-                
-                <div className="flex items-center gap-2 mb-3">
-                   <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs rounded font-medium">{product.category}</span>
-                   {product.stock < 10 && (
-                     <span className="text-xs text-orange-500 font-medium">Only {product.stock} left</span>
+              {filteredProducts.length === 0 && (
+                <div className="text-center py-20">
+                   <div className="bg-slate-50 dark:bg-slate-800 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="text-slate-300 dark:text-slate-600 w-10 h-10" />
+                   </div>
+                   <h3 className="text-lg font-medium text-slate-900 dark:text-white">No products found</h3>
+                   <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-2">Try adjusting your search, selecting a different category, or visiting another store.</p>
+                   {(searchQuery || selectedStoreId || (location !== 'Indore' && location !== 'Current Location')) && (
+                     <Button variant="outline" onClick={() => {setSearchQuery(''); handleStoreSelect('All'); setLocation('Indore');}}>
+                       Clear Filters
+                     </Button>
                    )}
                 </div>
-
-                <p className="text-slate-500 dark:text-slate-400 text-sm mb-4 line-clamp-2 flex-1">{product.description}</p>
-                
-                <div className="flex items-center gap-2 pt-4 border-t border-slate-50 dark:border-slate-800 mt-auto lg:hidden">
-                  <button 
-                    onClick={() => openChatWithStore(product.storeId)}
-                    className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex justify-center items-center gap-1"
-                  >
-                    <MessageCircle size={16} /> Chat
-                  </button>
-                  <button 
-                    onClick={() => onAddToCart(product)}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-20">
-             <div className="bg-slate-50 dark:bg-slate-800 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="text-slate-300 dark:text-slate-600 w-10 h-10" />
-             </div>
-             <h3 className="text-lg font-medium text-slate-900 dark:text-white">No products found</h3>
-             <p className="text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-2">Try adjusting your search, selecting a different category, or visiting another store.</p>
-             {(searchQuery || selectedStoreId) && (
-               <Button variant="outline" onClick={() => {setSearchQuery(''); handleStoreSelect('All');}} className="mt-6">
-                 Clear Filters
-               </Button>
-             )}
-          </div>
+              )}
+           </>
         )}
       </div>
 

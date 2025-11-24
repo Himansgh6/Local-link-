@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Sparkles, Package, TrendingUp, ShoppingBag, Store as StoreIcon, Settings, Search, MapPin, Upload, X, Phone, Briefcase, MessageCircle, Send, ChevronLeft, User, Bell, CheckSquare, Trash2, CheckCircle, Square, Pencil, LogOut, CreditCard, Sun, Moon } from 'lucide-react';
 import { Product, Order, StoreType, Store, User as UserType, Message } from '../types';
-import { STORE_TYPES, STORE_CATEGORIES } from '../constants';
+import { STORE_TYPES, STORE_CATEGORIES, STORE_IMAGES } from '../constants';
 import { Button } from './Button';
 import { generateProductDescription } from '../services/geminiService';
 
@@ -92,7 +92,12 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
   useEffect(() => {
     // Reset category when store changes (which changes store type)
     const currentType = getSelectedStoreType();
-    setNewCategory(STORE_CATEGORIES[currentType][0]);
+    const availableCategories = STORE_CATEGORIES[currentType];
+    
+    // Set to the first category of the new store type to ensure validity
+    if (availableCategories && availableCategories.length > 0) {
+      setNewCategory(availableCategories[0]);
+    }
   }, [selectedStoreId, myStores]);
   
   useEffect(() => {
@@ -518,48 +523,81 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
            <div className="space-y-6">
              {!isAddingStore ? (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Add New Store Card */}
+                  {/* Add New Store Card - Styled like a construction sign/blueprint */}
                   <button 
                     onClick={openAddStoreForm}
-                    className="h-full min-h-[200px] flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-2xl shadow-sm border-2 border-slate-200 dark:border-slate-700 border-dashed hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 transition-all group p-6"
+                    className="h-full min-h-[320px] flex flex-col items-center justify-center bg-white dark:bg-slate-900 rounded-2xl shadow-sm border-2 border-slate-200 dark:border-slate-700 border-dashed hover:border-indigo-300 dark:hover:border-indigo-500 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 transition-all group p-6 relative overflow-hidden"
                   >
-                    <div className="h-14 w-14 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                       <Plus className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                    <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                    <div className="h-16 w-16 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm relative z-10">
+                       <Plus className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Create New Store</h3>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm text-center mt-1">Expand your business with a new location or category</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white relative z-10">Launch New Store</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm text-center mt-2 max-w-[200px] relative z-10">Open a new location or start a new business category.</p>
                   </button>
 
-                  {/* Existing Stores */}
-                  {myStores.map(store => (
-                    <div key={store.id} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-6 flex flex-col hover:shadow-md transition-shadow">
-                       <div className="flex justify-between items-start mb-4">
-                          <div className={`h-12 w-12 rounded-xl flex items-center justify-center text-white font-bold shadow-sm
-                            ${store.type === 'Kirana' ? 'bg-emerald-500' : 
-                              store.type === 'Medical' ? 'bg-rose-500' : 
-                              store.type === 'Electronics' ? 'bg-blue-500' : 'bg-amber-500'}`}>
-                             {store.name.charAt(0)}
-                          </div>
-                          <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-lg uppercase tracking-wide">
-                            {store.type}
-                          </span>
-                       </div>
-                       <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{store.name}</h3>
-                       <div className="space-y-2 mt-auto pt-4 text-sm text-slate-500 dark:text-slate-400">
-                          <p className="flex items-center gap-2"><MapPin size={14}/> {store.address}</p>
-                          {store.phoneNumber && <p className="flex items-center gap-2"><Phone size={14}/> {store.phoneNumber}</p>}
-                       </div>
-                       <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-sm">
-                          <span className="text-slate-400">ID: {store.id.slice(0,6)}</span>
-                          <button 
-                             onClick={() => handleEditStore(store)}
-                             className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-1"
-                          >
-                             <Pencil size={14} /> Edit
-                          </button>
-                       </div>
-                    </div>
-                  ))}
+                  {/* Existing Stores - Real Shop View */}
+                  {myStores.map(store => {
+                    // Use a deterministic random image if the specific type isn't mapped, but constants usually handle it
+                    const coverImage = STORE_IMAGES[store.type] || STORE_IMAGES['All'];
+                    
+                    return (
+                      <div key={store.id} className="group bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-[320px]">
+                         {/* Card Image Area */}
+                         <div className="h-40 w-full relative overflow-hidden">
+                           <img 
+                              src={coverImage} 
+                              alt={store.name}
+                              className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700"
+                           />
+                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                           
+                           <div className="absolute bottom-4 left-4 right-4">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wide mb-2 text-white border border-white/20 backdrop-blur-sm
+                                ${store.type === 'Kirana' ? 'bg-emerald-500/80' : 
+                                  store.type === 'Medical' ? 'bg-rose-500/80' : 
+                                  store.type === 'Electronics' ? 'bg-blue-500/80' : 'bg-amber-500/80'}`}>
+                                {store.type}
+                              </span>
+                              <h3 className="text-xl font-bold text-white leading-tight shadow-sm truncate">{store.name}</h3>
+                           </div>
+                           
+                           <button 
+                             onClick={(e) => { e.stopPropagation(); handleEditStore(store); }}
+                             className="absolute top-3 right-3 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors border border-white/20"
+                             title="Edit Store"
+                           >
+                             <Pencil size={16} />
+                           </button>
+                         </div>
+                         
+                         {/* Card Content */}
+                         <div className="p-5 flex flex-col flex-1">
+                            <div className="space-y-3">
+                               <p className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                  <MapPin size={16} className="text-slate-400 shrink-0 mt-0.5"/> 
+                                  <span className="line-clamp-2">{store.address}</span>
+                               </p>
+                               {store.phoneNumber && (
+                                  <p className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                     <Phone size={16} className="text-slate-400 shrink-0"/> 
+                                     {store.phoneNumber}
+                                  </p>
+                               )}
+                            </div>
+                            
+                            <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                               <span className="text-xs text-slate-400 font-mono">ID: {store.id.slice(0,6)}</span>
+                               <div className="flex gap-2">
+                                  <button onClick={() => {setSelectedStoreId(store.id); setActiveTab('inventory'); setIsAdding(true);}} className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-lg transition-colors">
+                                     + Add Product
+                                  </button>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                    );
+                  })}
                </div>
              ) : (
                <div className="max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-8">
@@ -735,8 +773,14 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
                       <div className="grid grid-cols-2 gap-4">
                          <div>
                           <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Category</label>
-                          <select value={newCategory} onChange={e => setNewCategory(e.target.value)} className="w-full rounded-xl border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                            {STORE_CATEGORIES[getSelectedStoreType()]?.map(c => <option key={c} value={c}>{c}</option>) || <option>Other</option>}
+                          <select 
+                            value={newCategory} 
+                            onChange={e => setNewCategory(e.target.value)} 
+                            className="w-full rounded-xl border-slate-200 dark:border-slate-700 p-3 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
+                          >
+                            {STORE_CATEGORIES[getSelectedStoreType()]?.map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            )) || <option>Other</option>}
                           </select>
                         </div>
                         <div>
