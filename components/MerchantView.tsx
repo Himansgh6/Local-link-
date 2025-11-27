@@ -19,6 +19,7 @@ interface MerchantViewProps {
   onLogout: () => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
+  onDeleteStore: (storeId: string) => void;
 }
 
 export const MerchantView: React.FC<MerchantViewProps> = ({ 
@@ -34,7 +35,8 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
   onSendMessage,
   onLogout,
   isDarkMode,
-  toggleTheme
+  toggleTheme,
+  onDeleteStore
 }) => {
   const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'stores' | 'messages'>('inventory');
   const [isAdding, setIsAdding] = useState(false);
@@ -74,10 +76,17 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
 
   // Set default store selection
   useEffect(() => {
-    if (myStores.length > 0 && !selectedStoreId) {
-      setSelectedStoreId(myStores[0].id);
+    // If we have stores, check if the selected one is still valid. 
+    // If not (e.g. deleted), select the first one.
+    if (myStores.length > 0) {
+      const selectedStillExists = myStores.find(s => s.id === selectedStoreId);
+      if (!selectedStillExists) {
+        setSelectedStoreId(myStores[0].id);
+      }
+    } else {
+      setSelectedStoreId('');
     }
-  }, [myStores]);
+  }, [myStores, selectedStoreId]);
 
   // Clear selections when tab changes
   useEffect(() => {
@@ -246,6 +255,12 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
     });
     setEditingStoreId(store.id);
     setIsAddingStore(true);
+  };
+
+  const handleDeleteStoreClick = (store: Store) => {
+    if (window.confirm(`Are you sure you want to delete "${store.name}"? This will also remove all products associated with this store. This action cannot be undone.`)) {
+      onDeleteStore(store.id);
+    }
   };
 
   const closeStoreForm = () => {
@@ -562,13 +577,22 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
                               <h3 className="text-xl font-bold text-white leading-tight shadow-sm truncate">{store.name}</h3>
                            </div>
                            
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); handleEditStore(store); }}
-                             className="absolute top-3 right-3 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors border border-white/20"
-                             title="Edit Store"
-                           >
-                             <Pencil size={16} />
-                           </button>
+                           <div className="absolute top-3 right-3 flex gap-2">
+                             <button 
+                               onClick={(e) => { e.stopPropagation(); handleDeleteStoreClick(store); }}
+                               className="p-2 bg-rose-500/80 hover:bg-rose-600 backdrop-blur-md rounded-full text-white transition-colors border border-white/20"
+                               title="Delete Store"
+                             >
+                               <Trash2 size={16} />
+                             </button>
+                             <button 
+                               onClick={(e) => { e.stopPropagation(); handleEditStore(store); }}
+                               className="p-2 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full text-white transition-colors border border-white/20"
+                               title="Edit Store"
+                             >
+                               <Pencil size={16} />
+                             </button>
+                           </div>
                          </div>
                          
                          {/* Card Content */}
@@ -602,7 +626,12 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
              ) : (
                <div className="max-w-2xl mx-auto bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-8">
                   <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100 dark:border-slate-800">
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{editingStoreId ? 'Edit Store' : 'Create New Store'}</h3>
+                    <div className="flex items-center gap-2">
+                       <button onClick={closeStoreForm} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors">
+                          <ChevronLeft size={24} />
+                       </button>
+                       <h3 className="text-xl font-bold text-slate-900 dark:text-white">{editingStoreId ? 'Edit Store' : 'Create New Store'}</h3>
+                    </div>
                     <button onClick={closeStoreForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2">
                       <X size={24} />
                     </button>
@@ -681,7 +710,12 @@ export const MerchantView: React.FC<MerchantViewProps> = ({
             ) : (
               <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-8">
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-100 dark:border-slate-800">
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-white">New Product Details</h3>
+                  <div className="flex items-center gap-2">
+                     <button onClick={() => setIsAdding(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400 transition-colors">
+                        <ChevronLeft size={24} />
+                     </button>
+                     <h3 className="text-xl font-bold text-slate-900 dark:text-white">New Product Details</h3>
+                  </div>
                   <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-2">
                     <X size={24} />
                   </button>

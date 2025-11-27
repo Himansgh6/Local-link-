@@ -1,6 +1,6 @@
 {
-  "name": "LocalLink Market",
-  "short_name": "LocalLink",
+  "name": "Dolphin Market",
+  "short_name": "Dolphin",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

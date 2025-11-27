@@ -14,6 +14,7 @@ export interface User {
   phoneNumber?: string;
   address?: string;
   bio?: string;
+  photoURL?: string;
 }
 
 export interface Store {

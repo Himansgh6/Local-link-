@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { UserRole } from '../types';
 import { Button } from './Button';
-import { Store, User as UserIcon, Lock, Mail, AlertCircle, ArrowRight, ShoppingBag, Globe } from 'lucide-react';
+import { Store, User as UserIcon, Lock, Mail, AlertCircle, ArrowRight, ShoppingBag, Globe, Sparkles, Layers, Box, Upload, X } from 'lucide-react';
 
 interface AuthViewProps {
   onLogin: (email: string, pass: string) => void;
-  onSignup: (name: string, email: string, pass: string, role: UserRole) => void;
+  onSignup: (name: string, email: string, pass: string, role: UserRole, photo: File | null) => void;
+  onGoogleLogin: () => void;
   error?: string | null;
   isLoading?: boolean;
   onErrorClear?: () => void;
 }
 
-export const AuthView: React.FC<AuthViewProps> = ({ onLogin, onSignup, error, isLoading, onErrorClear }) => {
+export const AuthView: React.FC<AuthViewProps> = ({ onLogin, onSignup, onGoogleLogin, error, isLoading, onErrorClear }) => {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [isVisible, setIsVisible] = useState(false);
   
@@ -20,6 +21,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin, onSignup, error, is
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.SHOPPER);
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     setIsVisible(true);
@@ -30,7 +33,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin, onSignup, error, is
     if (mode === 'login') {
       onLogin(email, password);
     } else {
-      onSignup(name, email, password, role);
+      onSignup(name, email, password, role, profilePhoto);
     }
   };
 
@@ -43,185 +46,300 @@ export const AuthView: React.FC<AuthViewProps> = ({ onLogin, onSignup, error, is
       }, 300);
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setProfilePhoto(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-slate-900 relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
-        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-emerald-500/20 blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-indigo-500/20 blur-[120px] animate-pulse delay-1000"></div>
-        <div className="absolute top-[40%] left-[40%] w-[30%] h-[30%] rounded-full bg-teal-500/10 blur-[100px]"></div>
+    <div className="min-h-screen w-full flex items-center justify-center bg-[#0f172a] relative overflow-hidden [perspective:1000px]">
+      
+      {/* 3D Background Environment */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+         {/* Deep Space Gradient */}
+         <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-[#0f172a] to-[#020617]"></div>
+         
+         {/* 3D Perspective Grid Floor */}
+         <div className="absolute bottom-[-20%] left-[-50%] right-[-50%] h-[80%] bg-[linear-gradient(rgba(16,185,129,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.05)_1px,transparent_1px)] bg-[size:4rem_4rem] [transform:rotateX(60deg)] opacity-30 mask-image-b-fade"></div>
+
+         {/* Floating Volumetric Orbs */}
+         <div className="absolute top-[10%] left-[10%] w-72 h-72 rounded-full bg-emerald-500/20 blur-[80px] animate-float mix-blend-screen"></div>
+         <div className="absolute bottom-[20%] right-[10%] w-96 h-96 rounded-full bg-indigo-500/20 blur-[100px] animate-float-delayed mix-blend-screen"></div>
+         <div className="absolute top-[40%] left-[50%] w-64 h-64 rounded-full bg-teal-500/10 blur-[60px] animate-pulse-slow"></div>
       </div>
       
-      <div className={`relative z-10 w-full max-w-5xl h-[85vh] bg-white/10 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col md:flex-row transition-all duration-500 transform ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-        
-        {/* Left Panel (Visual) */}
-        <div className="hidden md:flex w-1/2 bg-gradient-to-br from-emerald-600 to-teal-800 relative p-12 text-white flex-col justify-between overflow-hidden group">
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80')] bg-cover bg-center mix-blend-overlay opacity-20 group-hover:scale-105 transition-transform duration-1000"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+      {/* Main Floating 3D Container */}
+      <div 
+        className={`relative z-10 w-full max-w-5xl h-[85vh] transition-all duration-700 ease-out preserve-3d ${
+          isVisible 
+          ? 'opacity-100 translate-y-0 rotate-x-0 scale-100' 
+          : 'opacity-0 translate-y-12 rotate-x-6 scale-95'
+        }`}
+      >
+        <div className="w-full h-full bg-slate-900/40 backdrop-blur-2xl rounded-[2rem] shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_20px_60px_-10px_rgba(0,0,0,0.6)] flex flex-col md:flex-row overflow-hidden">
           
-          <div className="relative z-10">
-            <div className="h-12 w-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center mb-8 border border-white/20 shadow-lg">
-              <Globe className="text-white" size={24} />
-            </div>
-            <h1 className="text-5xl font-bold leading-tight mb-6">
-              {mode === 'login' ? 'Welcome Back.' : 'Join the Community.'}
-            </h1>
-            <p className="text-emerald-100 text-lg max-w-sm">
-              {mode === 'login' 
-                ? 'Connecting you to the heartbeat of your local neighborhood market.' 
-                : 'Start your journey to support local businesses and find fresh treasures.'}
-            </p>
-          </div>
-
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-8">
-               <div className="flex -space-x-2">
-                  {[1,2,3,4].map(i => (
-                    <div key={i} className="w-8 h-8 rounded-full border-2 border-white/20 bg-white/30 backdrop-blur-sm overflow-hidden">
-                       <img src={`https://i.pravatar.cc/100?img=${10+i}`} alt="User" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
+          {/* Left Panel - 3D Visual Scene */}
+          <div className="hidden md:flex w-1/2 relative p-12 text-white flex-col justify-between overflow-hidden group">
+            {/* Inner background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 via-slate-900/60 to-slate-950/80 z-0"></div>
+            
+            {/* Animated 3D Composition */}
+            <div className="absolute inset-0 flex items-center justify-center [perspective:1000px] z-0 opacity-80">
+               {/* Central Floating Cube-like structure */}
+               <div className="relative w-64 h-64 [transform-style:preserve-3d] animate-float">
+                  {/* Glowing core */}
+                  <div className="absolute inset-0 bg-emerald-500/30 rounded-full blur-2xl"></div>
+                  
+                  {/* Rotating Elements */}
+                  <div className="absolute inset-0 border border-emerald-500/30 rounded-[2rem] [transform:rotateX(45deg)_rotateY(45deg)] animate-pulse-slow shadow-[0_0_30px_rgba(16,185,129,0.2)]"></div>
+                  <div className="absolute inset-4 border border-white/10 rounded-[1.5rem] [transform:rotateX(-45deg)_rotateY(-45deg)]"></div>
+                  
+                  {/* Floating particles */}
+                  <div className="absolute -top-10 -right-10 w-16 h-16 bg-gradient-to-br from-teal-400 to-emerald-600 rounded-xl shadow-lg animate-float-delayed [transform:rotateZ(12deg)] opacity-80"></div>
+                  <div className="absolute -bottom-5 -left-8 w-12 h-12 bg-gradient-to-tr from-indigo-400 to-violet-600 rounded-full shadow-lg animate-float [animation-delay:1s] opacity-80"></div>
                </div>
-               <span className="text-sm font-medium text-emerald-100">Join 10,000+ locals</span>
             </div>
-            <div className="flex gap-6 text-xs font-medium text-emerald-200/70">
-               <span className="cursor-pointer hover:text-white transition-colors">Privacy Policy</span>
-               <span className="cursor-pointer hover:text-white transition-colors">Terms of Service</span>
+
+            {/* Branding Layer */}
+            <div className="relative z-10">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="h-14 w-14 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]">
+                  <span className="font-bold text-2xl bg-clip-text text-transparent bg-gradient-to-b from-white to-emerald-200">D</span>
+                </div>
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight leading-none text-white drop-shadow-md">Dolphin</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                     <div className="h-0.5 w-4 bg-emerald-500 rounded-full"></div>
+                     <p className="text-emerald-100 text-[10px] font-bold tracking-widest uppercase opacity-80">Marketplace</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/5 backdrop-blur-md rounded-2xl p-6 border border-white/10 shadow-lg transform transition-transform group-hover:translate-y-[-5px]">
+                 <h1 className="text-4xl font-bold leading-tight mb-4 animate-in slide-in-from-bottom fade-in duration-700 bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-emerald-200">
+                   {mode === 'login' ? 'Future of Local.' : 'Start Selling.'}
+                 </h1>
+                 <p className="text-slate-300 text-sm leading-relaxed animate-in slide-in-from-bottom fade-in duration-700 delay-100">
+                   {mode === 'login' 
+                     ? 'Experience the next generation of hyper-local commerce. Connect, shop, and thrive in 3D.' 
+                     : 'Create your digital storefront in seconds. Reach customers in a whole new dimension.'}
+                 </p>
+              </div>
+            </div>
+
+            {/* Footer Stats */}
+            <div className="relative z-10 animate-in slide-in-from-bottom fade-in duration-700 delay-200">
+               <div className="flex gap-4">
+                  <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                     <span className="block text-xl font-bold text-emerald-400">2.5k+</span>
+                     <span className="text-[10px] text-slate-400 uppercase tracking-wider">Stores</span>
+                  </div>
+                  <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
+                     <span className="block text-xl font-bold text-indigo-400">10k+</span>
+                     <span className="text-[10px] text-slate-400 uppercase tracking-wider">Users</span>
+                  </div>
+               </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Panel (Form) */}
-        <div className="w-full md:w-1/2 bg-white flex flex-col justify-center p-8 sm:p-12 lg:p-16 relative">
-           <div className="max-w-sm mx-auto w-full">
-              <div className="text-center mb-10">
-                 <h2 className="text-3xl font-bold text-slate-900 mb-2">
-                    {mode === 'login' ? 'Sign In' : 'Create Account'}
-                 </h2>
-                 <p className="text-slate-500">
-                    {mode === 'login' ? 'Enter your credentials to access your account' : 'Fill in your details to get started'}
-                 </p>
-              </div>
-
-              {error && (
-                <div className="mb-6 bg-rose-50 border border-rose-100 text-rose-600 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
-                   <AlertCircle size={16} />
-                   {error}
+          {/* Right Panel - Form */}
+          <div className="w-full md:w-1/2 bg-slate-950/50 flex flex-col justify-center p-8 sm:p-12 lg:p-16 relative overflow-y-auto backdrop-blur-sm">
+             <div className="max-w-sm mx-auto w-full">
+                
+                {/* Mobile Branding */}
+                <div className="md:hidden flex flex-col items-center mb-8 animate-in fade-in duration-500">
+                   <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center text-white font-bold text-2xl mb-3 shadow-[0_0_20px_rgba(16,185,129,0.4)]">D</div>
+                   <span className="text-2xl font-bold text-white tracking-tight">Dolphin</span>
                 </div>
-              )}
 
-              <form onSubmit={handleSubmit} className="space-y-5">
-                 {mode === 'signup' && (
-                    <div className="space-y-1">
-                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Full Name</label>
-                       <div className="relative group">
-                          <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={20} />
-                          <input 
-                             type="text" 
-                             value={name}
-                             onChange={(e) => setName(e.target.value)}
-                             className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
-                             placeholder="John Doe"
-                             required
-                          />
-                       </div>
-                    </div>
-                 )}
+                <div className="text-center mb-6">
+                   <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                      {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+                   </h2>
+                   <p className="text-slate-400 text-sm">
+                      {mode === 'login' ? 'Enter your credentials to access your portal' : 'Fill in your details to get started'}
+                   </p>
+                </div>
 
-                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Email Address</label>
-                    <div className="relative group">
-                       <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={20} />
-                       <input 
-                          type="email" 
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
-                          placeholder="name@example.com"
-                          required
-                       />
-                    </div>
-                 </div>
+                {error && (
+                  <div className="mb-6 bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-3 rounded-xl text-sm flex items-center gap-2 backdrop-blur-sm">
+                     <AlertCircle size={16} />
+                     {error}
+                  </div>
+                )}
 
-                 <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide ml-1">Password</label>
-                    <div className="relative group">
-                       <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-500 transition-colors" size={20} />
-                       <input 
-                          type="password" 
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 text-slate-900 rounded-xl px-12 py-3.5 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium"
-                          placeholder="••••••••"
-                          required
-                       />
-                    </div>
-                 </div>
+                <button
+                   type="button"
+                   onClick={onGoogleLogin}
+                   disabled={isLoading}
+                   className="w-full bg-white text-slate-900 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-3 hover:bg-slate-100 transition-all active:scale-[0.98] mb-6 shadow-[0_4px_12px_rgba(0,0,0,0.2)]"
+                >
+                   <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.26.81-.58z" fill="#FBBC05" />
+                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                   </svg>
+                   Continue with Google
+                </button>
 
-                 {mode === 'signup' && (
-                   <div className="grid grid-cols-2 gap-4 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setRole(UserRole.SHOPPER)}
-                        className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${role === UserRole.SHOPPER ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                      >
-                         <ShoppingBag size={24} />
-                         <span className="text-sm font-bold">Shopper</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRole(UserRole.MERCHANT)}
-                        className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 transition-all ${role === UserRole.MERCHANT ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-100 text-slate-500 hover:border-slate-200'}`}
-                      >
-                         <Store size={24} />
-                         <span className="text-sm font-bold">Merchant</span>
-                      </button>
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-800"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-slate-900/50 backdrop-blur-sm px-2 text-slate-500">Or continue with</span>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                   {mode === 'signup' && (
+                      <>
+                        <div className="space-y-1.5 group">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide ml-1 transition-colors group-focus-within:text-emerald-500">Profile Photo</label>
+                           <div className="flex items-center gap-4">
+                              <div className="h-16 w-16 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                                 {photoPreview ? (
+                                    <img src={photoPreview} alt="Preview" className="h-full w-full object-cover" />
+                                 ) : (
+                                    <UserIcon size={24} className="text-slate-500" />
+                                 )}
+                              </div>
+                              <div className="relative flex-1">
+                                 <input 
+                                    type="file"
+                                    id="profile-photo"
+                                    accept="image/*"
+                                    onChange={handlePhotoChange}
+                                    className="hidden"
+                                 />
+                                 <label 
+                                    htmlFor="profile-photo"
+                                    className="flex items-center justify-center gap-2 w-full p-3 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 text-slate-400 text-xs font-medium cursor-pointer hover:bg-slate-800 hover:text-white transition-colors"
+                                 >
+                                    <Upload size={14} />
+                                    {profilePhoto ? 'Change Photo' : 'Upload Photo'}
+                                 </label>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="space-y-1.5 group">
+                           <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide ml-1 transition-colors group-focus-within:text-emerald-500">Full Name</label>
+                           <div className="relative transition-transform group-focus-within:scale-[1.02] duration-300">
+                              <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={18} />
+                              <input 
+                                 type="text" 
+                                 value={name}
+                                 onChange={(e) => setName(e.target.value)}
+                                 className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl px-11 py-3.5 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 focus:bg-slate-900 transition-all font-medium placeholder:text-slate-600 shadow-inner"
+                                 placeholder="John Doe"
+                                 required
+                              />
+                           </div>
+                        </div>
+                      </>
+                   )}
+
+                   <div className="space-y-1.5 group">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide ml-1 transition-colors group-focus-within:text-emerald-500">Email Address</label>
+                      <div className="relative transition-transform group-focus-within:scale-[1.02] duration-300">
+                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={18} />
+                         <input 
+                            type="email" 
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl px-11 py-3.5 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 focus:bg-slate-900 transition-all font-medium placeholder:text-slate-600 shadow-inner"
+                            placeholder="name@example.com"
+                            required
+                         />
+                      </div>
                    </div>
-                 )}
 
-                 <Button 
-                    type="submit" 
-                    className="w-full py-4 text-base mt-4 rounded-xl"
-                    isLoading={isLoading}
-                    variant={mode === 'signup' && role === UserRole.MERCHANT ? 'secondary' : 'primary'}
-                 >
-                    {mode === 'login' ? 'Sign In' : 'Create Account'}
-                    <ArrowRight size={18} className="ml-2 opacity-80" />
-                 </Button>
-              </form>
+                   <div className="space-y-1.5 group">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide ml-1 transition-colors group-focus-within:text-emerald-500">Password</label>
+                      <div className="relative transition-transform group-focus-within:scale-[1.02] duration-300">
+                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={18} />
+                         <input 
+                            type="password" 
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full bg-slate-900/50 border border-slate-700 text-white rounded-xl px-11 py-3.5 outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/50 focus:bg-slate-900 transition-all font-medium placeholder:text-slate-600 shadow-inner"
+                            placeholder="••••••••"
+                            required
+                         />
+                      </div>
+                   </div>
 
-              <div className="mt-8 text-center">
-                 <p className="text-slate-500">
-                    {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
-                    <button 
-                       onClick={toggleMode}
-                       className="ml-2 font-bold text-emerald-600 hover:text-emerald-700 hover:underline transition-all"
-                    >
-                       {mode === 'login' ? 'Sign Up' : 'Sign In'}
-                    </button>
-                 </p>
-              </div>
+                   {mode === 'signup' && (
+                     <div className="grid grid-cols-2 gap-4 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setRole(UserRole.SHOPPER)}
+                          className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all duration-300 ${
+                            role === UserRole.SHOPPER 
+                            ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]' 
+                            : 'border-slate-800 bg-slate-900/30 text-slate-500 hover:bg-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                           <ShoppingBag size={24} className={role === UserRole.SHOPPER ? 'animate-bounce' : ''} />
+                           <span className="text-xs font-bold">Shopper</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRole(UserRole.MERCHANT)}
+                          className={`p-4 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all duration-300 ${
+                            role === UserRole.MERCHANT 
+                            ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]' 
+                            : 'border-slate-800 bg-slate-900/30 text-slate-500 hover:bg-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                           <Store size={24} className={role === UserRole.MERCHANT ? 'animate-bounce' : ''} />
+                           <span className="text-xs font-bold">Merchant</span>
+                        </button>
+                     </div>
+                   )}
 
-              {mode === 'login' && (
-                 <div className="mt-8 pt-6 border-t border-slate-100">
-                    <p className="text-xs text-center text-slate-400 mb-3 uppercase tracking-wide font-semibold">Demo Accounts</p>
-                    <div className="flex gap-2 justify-center text-xs">
-                       <button 
-                          onClick={() => {setEmail('shopper@test.com'); setPassword('password');}}
-                          className="px-3 py-1 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-600 text-slate-600 rounded-full transition-colors font-medium"
-                       >
-                          Shopper
-                       </button>
-                       <button 
-                          onClick={() => {setEmail('merchant@test.com'); setPassword('password');}}
-                          className="px-3 py-1 bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 rounded-full transition-colors font-medium"
-                       >
-                          Merchant
-                       </button>
-                    </div>
-                 </div>
-              )}
-           </div>
+                   <Button 
+                      type="submit" 
+                      className="w-full py-4 text-base mt-2 rounded-xl relative overflow-hidden group shadow-lg shadow-emerald-900/20"
+                      isLoading={isLoading}
+                      variant={mode === 'signup' && role === UserRole.MERCHANT ? 'secondary' : 'primary'}
+                   >
+                      <span className="relative z-10 flex items-center justify-center">
+                        {mode === 'login' ? 'Sign In' : 'Create Account'}
+                        <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                      {/* Button shine effect */}
+                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                   </Button>
+                </form>
+
+                <div className="mt-8 text-center">
+                   <p className="text-slate-400 text-sm">
+                      {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
+                      <button 
+                         onClick={toggleMode}
+                         className="ml-2 font-bold text-emerald-400 hover:text-emerald-300 hover:underline transition-all"
+                      >
+                         {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                      </button>
+                   </p>
+                </div>
+
+                <div className="pt-6 border-t border-slate-800 text-center">
+                  <p className="font-bold text-slate-600 text-xs">Gwalvanshi Private Limited</p>
+                  <p className="text-[10px] text-slate-600">App Since 2025</p>
+                </div>
+             </div>
+          </div>
         </div>
       </div>
     </div>

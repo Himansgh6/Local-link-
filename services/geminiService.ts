@@ -1,6 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Product } from '../types';
 
+// Declare process to avoid TypeScript errors since Vite defines it globally during build
+declare const process: any;
+
 // Initialize the client
 // NOTE: In a real production app, you might proxy this through a backend to protect the key.
 // For this demo, we use the process.env.API_KEY directly as requested.

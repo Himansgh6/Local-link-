@@ -5,15 +5,20 @@ import { MOCK_PRODUCTS, MOCK_STORES } from './constants';
 import { MerchantView } from './components/MerchantView';
 import { ShopperView } from './components/ShopperView';
 import { AuthView } from './components/AuthView';
+import { db, auth, storage } from './services/firebase';
+import { collection, getDocs, setDoc, doc, getDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const App: React.FC = () => {
   // User State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [initializing, setInitializing] = useState(true);
   
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem('locallink_theme');
+      const saved = localStorage.getItem('dolphin_theme');
       return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
     } catch {
       return false;
@@ -23,145 +28,304 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('locallink_theme', 'dark');
+      localStorage.setItem('dolphin_theme', 'dark');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('locallink_theme', 'light');
+      localStorage.setItem('dolphin_theme', 'light');
     }
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
-  // Initialize users from localStorage or defaults
-  const [users, setUsers] = useState<Array<User & { password: string }>>(() => {
-    try {
-      const savedUsers = localStorage.getItem('locallink_users');
-      if (savedUsers) {
-        return JSON.parse(savedUsers);
-      }
-    } catch (error) {
-      console.error('Error loading users from local storage:', error);
-    }
-    
-    return [
-      { id: '1', name: 'Local Merchant', email: 'merchant@test.com', role: UserRole.MERCHANT, password: 'password' },
-      { id: '2', name: 'Jane Doe', email: 'shopper@test.com', role: UserRole.SHOPPER, password: 'password' }
-    ];
-  });
-
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
-
-  // App Data State with Persistence
+  // Data States
   const [products, setProducts] = useState<Product[]>(() => {
     try {
-      const saved = localStorage.getItem('locallink_products');
+      const saved = localStorage.getItem('dolphin_products');
       return saved ? JSON.parse(saved) : MOCK_PRODUCTS;
     } catch (e) { return MOCK_PRODUCTS; }
   });
 
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    try {
-      const saved = localStorage.getItem('locallink_cart');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
-  });
-
-  const [orders, setOrders] = useState<Order[]>(() => {
-    try {
-      const saved = localStorage.getItem('locallink_orders');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) { return []; }
-  });
-
   const [stores, setStores] = useState<Store[]>(() => {
     try {
-      const saved = localStorage.getItem('locallink_stores');
+      const saved = localStorage.getItem('dolphin_stores');
       return saved ? JSON.parse(saved) : MOCK_STORES;
     } catch (e) { return MOCK_STORES; }
   });
 
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const saved = localStorage.getItem('dolphin_orders');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
+
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
-      const saved = localStorage.getItem('locallink_messages');
+      const saved = localStorage.getItem('dolphin_messages');
       return saved ? JSON.parse(saved) : [];
     } catch (e) { return []; }
   });
 
   const [reviews, setReviews] = useState<Review[]>(() => {
     try {
-      const saved = localStorage.getItem('locallink_reviews');
+      const saved = localStorage.getItem('dolphin_reviews');
       return saved ? JSON.parse(saved) : [];
     } catch (e) { return []; }
   });
 
-  // Save data to local storage whenever it changes
-  useEffect(() => localStorage.setItem('locallink_users', JSON.stringify(users)), [users]);
-  useEffect(() => localStorage.setItem('locallink_products', JSON.stringify(products)), [products]);
-  useEffect(() => localStorage.setItem('locallink_stores', JSON.stringify(stores)), [stores]);
-  useEffect(() => localStorage.setItem('locallink_orders', JSON.stringify(orders)), [orders]);
-  useEffect(() => localStorage.setItem('locallink_messages', JSON.stringify(messages)), [messages]);
-  useEffect(() => localStorage.setItem('locallink_cart', JSON.stringify(cart)), [cart]);
-  useEffect(() => localStorage.setItem('locallink_reviews', JSON.stringify(reviews)), [reviews]);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('dolphin_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) { return []; }
+  });
 
-  const handleLogin = (email: string, pass: string) => {
-    setAuthLoading(true);
-    setAuthError(null);
-    
-    // Simulate network delay
-    setTimeout(() => {
-      const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === pass);
+  // FIREBASE AUTHENTICATION LISTENER
+  useEffect(() => {
+    if (!auth) {
+      setInitializing(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setCurrentUser(user);
+        // User is signed in, fetch additional details from Firestore (like Role)
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            setCurrentUser(userData);
+          } else {
+             // Fallback if doc doesn't exist (e.g. signup created auth but failed db write)
+             setCurrentUser({
+               id: user.uid,
+               name: user.displayName || 'User',
+               email: user.email || '',
+               role: UserRole.SHOPPER, // Default
+               photoURL: user.photoURL || undefined
+             });
+          }
+        } catch (error) {
+          console.error("Error fetching user details:", error);
+          // CRITICAL FALLBACK: If Firestore fails (network/permissions), still log the user in
+          setCurrentUser({
+            id: user.uid,
+            name: user.displayName || 'User',
+            email: user.email || '',
+            role: UserRole.SHOPPER,
+            photoURL: user.photoURL || undefined
+          });
+        }
       } else {
-        setAuthError('Invalid email or password');
+        // User is signed out
+        setCurrentUser(null);
       }
-      setAuthLoading(false);
-    }, 800);
+      setInitializing(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // FIREBASE DATA SYNC
+  useEffect(() => {
+    const syncData = async () => {
+      if (!db || !currentUser) return; // Only sync if logged in
+
+      try {
+        // Products
+        const productsSnapshot = await getDocs(collection(db, 'products'));
+        if (!productsSnapshot.empty) {
+           const dbProducts = productsSnapshot.docs.map(doc => doc.data() as Product);
+           setProducts(dbProducts);
+        }
+
+        // Stores
+        const storesSnapshot = await getDocs(collection(db, 'stores'));
+        if (!storesSnapshot.empty) {
+           const dbStores = storesSnapshot.docs.map(doc => doc.data() as Store);
+           setStores(dbStores);
+        }
+
+        // Orders
+        const ordersSnapshot = await getDocs(collection(db, 'orders'));
+        if (!ordersSnapshot.empty) {
+           const dbOrders = ordersSnapshot.docs.map(doc => doc.data() as Order);
+           setOrders(dbOrders);
+        }
+
+        // Reviews
+        const reviewsSnapshot = await getDocs(collection(db, 'reviews'));
+        if (!reviewsSnapshot.empty) {
+          const dbReviews = reviewsSnapshot.docs.map(doc => doc.data() as Review);
+          setReviews(dbReviews);
+        }
+
+      } catch (error) {
+        console.error("Error syncing with Firebase:", error);
+      }
+    };
+
+    if (currentUser) {
+      syncData();
+    }
+  }, [currentUser]);
+
+  // Helpers to save to Firestore
+  const saveToFirebase = async (collectionName: string, id: string, data: any) => {
+    if (!db) return;
+    try {
+      await setDoc(doc(db, collectionName, id), data);
+    } catch (e) {
+      console.error(`Error saving to ${collectionName}:`, e);
+    }
   };
 
-  const handleSignup = (name: string, email: string, pass: string, role: UserRole) => {
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Save data to local storage whenever it changes (backup)
+  useEffect(() => localStorage.setItem('dolphin_products', JSON.stringify(products)), [products]);
+  useEffect(() => localStorage.setItem('dolphin_stores', JSON.stringify(stores)), [stores]);
+  useEffect(() => localStorage.setItem('dolphin_orders', JSON.stringify(orders)), [orders]);
+  useEffect(() => localStorage.setItem('dolphin_messages', JSON.stringify(messages)), [messages]);
+  useEffect(() => localStorage.setItem('dolphin_cart', JSON.stringify(cart)), [cart]);
+  useEffect(() => localStorage.setItem('dolphin_reviews', JSON.stringify(reviews)), [reviews]);
+
+  const handleLogin = async (email: string, pass: string) => {
     setAuthLoading(true);
     setAuthError(null);
     
-    setTimeout(() => {
-      if (users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
-        setAuthError('Email already registered');
-        setAuthLoading(false);
-        return;
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      // Logic handled by onAuthStateChanged
+    } catch (error: any) {
+      console.error("Login Error:", error);
+      const errorCode = error.code;
+      if (errorCode === 'auth/invalid-email' || errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
+        setAuthError('Incorrect email or password.');
+      } else if (errorCode === 'auth/too-many-requests') {
+        setAuthError('Too many attempts. Please try again later.');
+      } else if (errorCode === 'auth/network-request-failed') {
+        setAuthError('Network error. Check your internet connection.');
+      } else {
+        setAuthError(error.message || 'Failed to login');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Check if user doc exists in Firestore, if not create it
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        const newUser: User = {
+          id: user.uid,
+          name: user.displayName || 'User',
+          email: user.email || '',
+          role: UserRole.SHOPPER, // Default role for Google Sign In
+          photoURL: user.photoURL || undefined
+        };
+        await setDoc(userDocRef, newUser);
+        // Current user state will be updated by onAuthStateChanged
+      }
+    } catch (error: any) {
+      console.error("Google Login Error:", error);
+      if (error.code === 'auth/popup-closed-by-user') {
+        // User closed popup, no need to show error
+      } else {
+        setAuthError(error.message || 'Failed to sign in with Google');
+      }
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignup = async (name: string, email: string, pass: string, role: UserRole, photo: File | null) => {
+    setAuthLoading(true);
+    setAuthError(null);
+    
+    try {
+      // 1. Create User in Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+      const user = userCredential.user;
+      
+      let photoURL = '';
+
+      // 2. Upload Profile Photo if exists
+      if (photo && storage) {
+        try {
+          const storageRef = ref(storage, `profile_photos/${user.uid}`);
+          await uploadBytes(storageRef, photo);
+          photoURL = await getDownloadURL(storageRef);
+        } catch (uploadError) {
+          console.error("Error uploading photo:", uploadError);
+          // Continue signup even if photo upload fails
+        }
       }
 
-      const newUser = {
-        id: Math.random().toString(36).substr(2, 9),
+      // 3. Update Auth Profile
+      await updateProfile(user, {
+        displayName: name,
+        photoURL: photoURL || null
+      });
+
+      // 4. Create User Document in Firestore with Role
+      const newUser: User = {
+        id: user.uid,
         name,
         email,
-        password: pass,
-        role
+        role,
+        photoURL
       };
 
-      setUsers(prev => [...prev, newUser]);
+      await setDoc(doc(db, 'users', user.uid), newUser);
       setCurrentUser(newUser);
 
-      // Auto-create a default store for new merchants so they have data
+      // 5. Auto-create a default store for new merchants
       if (role === UserRole.MERCHANT) {
         const newStore: Store = {
           id: Math.random().toString(36).substr(2, 9),
-          ownerId: newUser.id,
+          ownerId: user.uid,
           name: `${name}'s Store`,
           type: 'General',
           address: 'Main Market',
           phoneNumber: ''
         };
         setStores(prev => [...prev, newStore]);
+        saveToFirebase('stores', newStore.id, newStore);
       }
 
+    } catch (error: any) {
+      console.error("Signup Error:", error);
+      if (error.code === 'auth/email-already-in-use') {
+        setAuthError('Email already registered');
+      } else if (error.code === 'auth/weak-password') {
+        setAuthError('Password should be at least 6 characters');
+      } else {
+        setAuthError(error.message || 'Failed to sign up');
+      }
+    } finally {
       setAuthLoading(false);
-    }, 800);
+    }
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-    setCart([]); // Clear active session cart, though it is persisted
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      setCart([]);
+    } catch (error) {
+      console.error("Logout Error:", error);
+    }
   };
 
   const handleUpdateProfile = (updates: Partial<User>) => {
@@ -170,30 +334,44 @@ const App: React.FC = () => {
     const updatedUser = { ...currentUser, ...updates };
     setCurrentUser(updatedUser);
     
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, ...updates } : u));
+    saveToFirebase('users', currentUser.id, updatedUser);
   };
 
   const handleAddProduct = (product: Product) => {
     setProducts(prev => [...prev, product]);
+    saveToFirebase('products', product.id, product);
   };
 
   const handleAddStore = (store: Store) => {
     setStores(prev => [...prev, store]);
+    saveToFirebase('stores', store.id, store);
   };
 
   const handleUpdateStore = (updatedStore: Store) => {
     setStores(prev => prev.map(s => s.id === updatedStore.id ? updatedStore : s));
+    saveToFirebase('stores', updatedStore.id, updatedStore);
+
     // Update denormalized store data in products
-    setProducts(prev => prev.map(p => {
+    const updatedProducts = products.map(p => {
       if (p.storeId === updatedStore.id) {
-        return {
+        const updated = {
           ...p,
           storeName: updatedStore.name,
           storeType: updatedStore.type
         };
+        saveToFirebase('products', p.id, updated);
+        return updated;
       }
       return p;
-    }));
+    });
+    setProducts(updatedProducts);
+  };
+
+  const handleDeleteStore = (storeId: string) => {
+    // Optimistic UI update
+    setStores(prev => prev.filter(s => s.id !== storeId));
+    // Cascade delete products
+    setProducts(prev => prev.filter(p => p.storeId !== storeId));
   };
 
   const handleSendMessage = (text: string, receiverId: string) => {
@@ -207,6 +385,7 @@ const App: React.FC = () => {
       senderName: currentUser.name
     };
     setMessages(prev => [...prev, newMessage]);
+    saveToFirebase('messages', newMessage.id, newMessage);
   };
 
   const handleAddToCart = (product: Product) => {
@@ -238,21 +417,37 @@ const App: React.FC = () => {
       paymentMethod: paymentMethod,
     };
     setOrders(prev => [newOrder, ...prev]);
+    saveToFirebase('orders', newOrder.id, newOrder);
     setCart([]);
     alert(`Order placed successfully via ${paymentMethod}! A merchant will review it shortly.`);
   };
 
   const handleCancelOrder = (orderId: string) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelled' } : o));
+    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status: 'cancelled' as const } : o);
+    setOrders(updatedOrders);
+    const order = updatedOrders.find(o => o.id === orderId);
+    if (order) saveToFirebase('orders', order.id, order);
   };
 
   const handleUpdateOrderStatus = (orderId: string, status: Order['status']) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
+    const updatedOrders = orders.map(o => o.id === orderId ? { ...o, status } : o);
+    setOrders(updatedOrders);
+    const order = updatedOrders.find(o => o.id === orderId);
+    if (order) saveToFirebase('orders', order.id, order);
   };
 
   const handleAddReview = (review: Review) => {
     setReviews(prev => [review, ...prev]);
+    saveToFirebase('reviews', review.id, review);
   };
+
+  if (initializing) {
+     return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+        </div>
+     );
+  }
 
   // Render Auth View if not logged in
   if (!currentUser) {
@@ -260,6 +455,7 @@ const App: React.FC = () => {
       <AuthView 
         onLogin={handleLogin} 
         onSignup={handleSignup} 
+        onGoogleLogin={handleGoogleLogin}
         error={authError}
         isLoading={authLoading}
         onErrorClear={() => setAuthError(null)}
@@ -295,6 +491,7 @@ const App: React.FC = () => {
           onLogout={handleLogout}
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
+          onDeleteStore={handleDeleteStore}
         />
       ) : (
         <ShopperView 
@@ -326,7 +523,6 @@ const App: React.FC = () => {
             <h4 className="font-bold text-sm text-slate-900 dark:text-white">Latest Order Status</h4>
           </div>
           {(() => {
-            // Get most recent order for this user
             const latestOrder = orders.filter(o => o.customerName === currentUser.name)[0];
             return (
               <>
