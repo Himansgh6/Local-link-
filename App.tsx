@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, LogOut } from 'lucide-react';
+import { Truck, LogOut, AlertTriangle, WifiOff } from 'lucide-react';
 import { UserRole, Product, CartItem, Order, User, Store, Message, Review } from './types';
 import { MOCK_PRODUCTS, MOCK_STORES } from './constants';
 import { MerchantView } from './components/MerchantView';
 import { ShopperView } from './components/ShopperView';
 import { AuthView } from './components/AuthView';
+import { SplashScreen } from './components/SplashScreen';
 import { db, auth, storage } from './services/firebase';
 import { collection, getDocs, setDoc, doc, getDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const App: React.FC = () => {
+  // Splash Screen State
+  const [showSplash, setShowSplash] = useState(true);
+
   // User State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [initializing, setInitializing] = useState(true);
+  const [isDbConnected, setIsDbConnected] = useState(true);
   
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -36,6 +41,14 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  // Handle Splash Screen Timer
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000); // Show splash for at least 3 seconds
+    return () => clearTimeout(timer);
+  }, []);
 
   // Data States
   const [products, setProducts] = useState<Product[]>(() => {
@@ -105,8 +118,14 @@ const App: React.FC = () => {
                photoURL: user.photoURL || undefined
              });
           }
-        } catch (error) {
+          setIsDbConnected(true);
+        } catch (error: any) {
           console.error("Error fetching user details:", error);
+          
+          if (error.code === 'permission-denied') {
+             setIsDbConnected(false);
+          }
+
           // CRITICAL FALLBACK: If Firestore fails (network/permissions), still log the user in
           setCurrentUser({
             id: user.uid,
@@ -129,7 +148,7 @@ const App: React.FC = () => {
   // FIREBASE DATA SYNC
   useEffect(() => {
     const syncData = async () => {
-      if (!db || !currentUser) return; // Only sync if logged in
+      if (!db || !currentUser || !isDbConnected) return; // Only sync if logged in and connected
 
       try {
         // Products
@@ -159,24 +178,33 @@ const App: React.FC = () => {
           const dbReviews = reviewsSnapshot.docs.map(doc => doc.data() as Review);
           setReviews(dbReviews);
         }
+        
+        // If we reached here, connection is good
+        setIsDbConnected(true);
 
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error syncing with Firebase:", error);
+        if (error.code === 'permission-denied') {
+          setIsDbConnected(false);
+        }
       }
     };
 
     if (currentUser) {
       syncData();
     }
-  }, [currentUser]);
+  }, [currentUser, isDbConnected]);
 
   // Helpers to save to Firestore
   const saveToFirebase = async (collectionName: string, id: string, data: any) => {
-    if (!db) return;
+    if (!db || !isDbConnected) return; // Don't try to save if we know we have no permissions
     try {
       await setDoc(doc(db, collectionName, id), data);
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Error saving to ${collectionName}:`, e);
+      if (e.code === 'permission-denied') {
+         setIsDbConnected(false);
+      }
     }
   };
 
@@ -223,21 +251,30 @@ const App: React.FC = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check if user doc exists in Firestore, if not create it
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      // Optimistic user object in case DB fails
+      const newUser: User = {
+        id: user.uid,
+        name: user.displayName || 'User',
+        email: user.email || '',
+        role: UserRole.SHOPPER, // Default role for Google Sign In
+        photoURL: user.photoURL || undefined
+      };
 
-      if (!userDoc.exists()) {
-        const newUser: User = {
-          id: user.uid,
-          name: user.displayName || 'User',
-          email: user.email || '',
-          role: UserRole.SHOPPER, // Default role for Google Sign In
-          photoURL: user.photoURL || undefined
-        };
-        await setDoc(userDocRef, newUser);
-        // Current user state will be updated by onAuthStateChanged
+      // Check if user doc exists in Firestore, if not create it
+      // Wrap in try-catch to handle permission errors silently during login
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists()) {
+          await setDoc(userDocRef, newUser);
+        }
+      } catch (e: any) {
+        console.warn("Could not create/fetch user in DB (likely permissions). Using auth profile.", e);
+        if (e.code === 'permission-denied') setIsDbConnected(false);
       }
+      
+      // If onAuthStateChanged fails to get DB user, it will use Auth details, which matches newUser
     } catch (error: any) {
       console.error("Google Login Error:", error);
       if (error.code === 'auth/popup-closed-by-user') {
@@ -288,7 +325,13 @@ const App: React.FC = () => {
         photoURL
       };
 
-      await setDoc(doc(db, 'users', user.uid), newUser);
+      try {
+        await setDoc(doc(db, 'users', user.uid), newUser);
+      } catch (e: any) {
+        console.warn("DB Permission denied during signup. Proceeding with local state.");
+        if (e.code === 'permission-denied') setIsDbConnected(false);
+      }
+      
       setCurrentUser(newUser);
 
       // 5. Auto-create a default store for new merchants
@@ -372,6 +415,9 @@ const App: React.FC = () => {
     setStores(prev => prev.filter(s => s.id !== storeId));
     // Cascade delete products
     setProducts(prev => prev.filter(p => p.storeId !== storeId));
+    
+    // Attempt delete in firebase (requires logic in saveToFirebase or separate delete function)
+    // For this simplified version we're relying on local storage sync
   };
 
   const handleSendMessage = (text: string, receiverId: string) => {
@@ -441,12 +487,9 @@ const App: React.FC = () => {
     saveToFirebase('reviews', review.id, review);
   };
 
-  if (initializing) {
-     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
-        </div>
-     );
+  // RENDER: SPLASH SCREEN OR MAIN APP
+  if (showSplash || initializing) {
+     return <SplashScreen />;
   }
 
   // Render Auth View if not logged in
@@ -465,6 +508,14 @@ const App: React.FC = () => {
 
   return (
     <div className="transition-colors duration-200">
+      {/* DB Connection Error Banner */}
+      {!isDbConnected && (
+        <div className="bg-rose-600 text-white px-4 py-2 text-xs font-bold flex items-center justify-center gap-2 sticky top-0 z-[100]">
+          <WifiOff size={14} />
+          Database Access Denied: Check Firebase Firestore Rules. App is running in Local Storage Mode.
+        </div>
+      )}
+
       {/* Logout Button (Desktop) */}
       <div className="fixed bottom-4 left-4 z-50 hidden md:block">
         <button 
